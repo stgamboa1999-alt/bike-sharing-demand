@@ -4,7 +4,7 @@ Modelo predictivo que estima la demanda diaria de un sistema de *bike-sharing* a
 
 **Random Forest — R² = 0.87 · RMSE = 696.6 · MAE = 498.1**
 
-![Valores reales vs predichos](Valores Reales vs Predichos - Random forest.png)
+![Valores reales vs predichos](Valores%20Reales%20vs%20Predichos%20-%20Random%20forest.png)
 ---
 
 ## Contexto del problema
