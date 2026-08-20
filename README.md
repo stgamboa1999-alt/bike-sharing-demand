@@ -3,6 +3,7 @@
 Modelo predictivo que estima la demanda diaria de un sistema de *bike-sharing* a partir de variables climáticas y temporales, comparando tres algoritmos supervisados y explicando qué factores influyen más en el comportamiento de los usuarios.
 
 **Random Forest — R² = 0.87 · RMSE = 696.6 · MAE = 498.1**
+
 ![Valores reales vs predichos](Valores Reales vs Predichos - Random forest.png)
 ---
 
