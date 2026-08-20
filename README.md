@@ -13,7 +13,8 @@ Un sistema de bicicletas compartidas necesita anticipar cuántas unidades van a 
 - Redistribuir bicicletas hacia zonas de mayor demanda.
 - Anticipar picos y valles de uso según clima y estacionalidad.
 
-Este proyecto responde a la pregunta: **¿qué tan bien se puede predecir la demanda diaria usando solo datos de clima, calendario y estacionalidad?**
+Este proyecto responde a la pregunta: 
+**¿qué tan bien se puede predecir la demanda diaria usando solo datos de clima, calendario y estacionalidad?**
 
 ## Dataset
 
@@ -53,7 +54,7 @@ El Random Forest explica el **87.35%** de la variabilidad en la demanda diaria, 
 - **Fines de semana**: redistribuir unidades hacia zonas recreativas los viernes por la noche.
 - **Crecimiento**: planificar ampliación gradual de la flota dado el crecimiento interanual observado.
 
-## 🛠️ Stack técnico
+## Stack técnico
 
 `R` · `tidyverse` · `caret` · `rpart` / `rpart.plot` · `randomForest` · `ggplot2` · `janitor` · `knitr` / `kableExtra`
 
