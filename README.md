@@ -1,4 +1,4 @@
-# 🚲 Predicción de Demanda de un Sistema de Bicicletas Compartidas
+# Predicción de Demanda de un Sistema de Bicicletas Compartidas
 
 Modelo predictivo que estima la demanda diaria de un sistema de *bike-sharing* a partir de variables climáticas y temporales, comparando tres algoritmos supervisados y explicando qué factores influyen más en el comportamiento de los usuarios.
 
@@ -6,7 +6,7 @@ Modelo predictivo que estima la demanda diaria de un sistema de *bike-sharing* a
 
 ---
 
-## 📌 Contexto del problema
+## Contexto del problema
 
 Un sistema de bicicletas compartidas necesita anticipar cuántas unidades van a alquilarse cada día para:
 - Planificar mantenimiento sin afectar el servicio.
@@ -15,13 +15,13 @@ Un sistema de bicicletas compartidas necesita anticipar cuántas unidades van a 
 
 Este proyecto responde a la pregunta: **¿qué tan bien se puede predecir la demanda diaria usando solo datos de clima, calendario y estacionalidad?**
 
-## 🗂️ Dataset
+## Dataset
 
 [Bike Sharing Dataset](https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset) (UCI Machine Learning Repository) — registros diarios de alquiler de bicicletas en Washington D.C., 2011–2012 (731 observaciones, 16 variables: clima, temporada, día laboral/feriado, temperatura, humedad, viento, y conteo de alquileres).
 
 > El archivo `data/day.csv` no está incluido en este repo por convención de tamaño/licencia — descargalo del enlace de arriba y colocalo en `data/`.
 
-## 🔧 Metodología
+## Metodología
 
 1. **Exploración y limpieza**: verificación de estructura, tipos de datos, nulos y duplicados (dataset sin valores faltantes ni duplicados).
 2. **Conversión de variables categóricas** (`season`, `weathersit`, `yr`, `weekday`) a factor.
@@ -34,7 +34,7 @@ Este proyecto responde a la pregunta: **¿qué tan bien se puede predecir la dem
 6. **Evaluación** con RMSE, MAE y R² sobre el conjunto de prueba independiente.
 7. **Interpretación de importancia de variables** del modelo ganador.
 
-## 📊 Resultados
+## Resultados
 
 | Modelo             | RMSE    | MAE    | R²     |
 |---------------------|---------|--------|--------|
@@ -46,7 +46,7 @@ El Random Forest explica el **87.35%** de la variabilidad en la demanda diaria, 
 
 **Variables más influyentes**: año (tendencia de crecimiento del servicio), humedad, temperatura y mes — confirmando que el clima y la estacionalidad son determinantes clave.
 
-## 💡 Recomendaciones de negocio
+## Recomendaciones de negocio
 
 - **Gestión estacional**: aprovechar noviembre–febrero (baja demanda) para mantenimiento preventivo.
 - **Clima adverso**: incentivos (descuentos, puntos de fidelidad) en días de alta humedad o lluvia.
@@ -57,7 +57,7 @@ El Random Forest explica el **87.35%** de la variabilidad en la demanda diaria, 
 
 `R` · `tidyverse` · `caret` · `rpart` / `rpart.plot` · `randomForest` · `ggplot2` · `janitor` · `knitr` / `kableExtra`
 
-## 📁 Estructura del repo
+## Estructura del repo
 
 ```
 bike-sharing-demand/
@@ -68,7 +68,7 @@ bike-sharing-demand/
 └── .gitignore
 ```
 
-## ▶️ Cómo reproducirlo
+## Cómo reproducirlo
 
 1. Descargá `day.csv` del [UCI Bike Sharing Dataset](https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset) y colocalo en `data/`.
 2. Abrí `analisis_demanda_bicicletas.Rmd` en RStudio.
