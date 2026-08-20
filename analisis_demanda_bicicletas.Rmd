@@ -1,0 +1,491 @@
+---
+title: "CD_501_Avance2_GrupoC."
+author: "Rodder Gamboa Mora, Oscar Andino Quirós y Brandon Lanzoni Rodríguez"
+date: "2026-04-13"
+output: html_document
+---
+# Carga de Librerías Y Datos
+
+## Librerias
+
+Se cargan las librerías necesarias para el análisis exploratorio, limpieza de datos y construcción de modelos supervisados.
+
+```{r}
+library(tidyverse)
+library(janitor) 
+library(lubridate)
+library(skimr)
+library(scales)
+library(knitr)
+library(kableExtra)
+library(caret)
+library(rpart)
+library(e1071)
+```
+
+
+## Se procede a cargar el dataset
+
+```{r}
+path <- "data/day.csv"
+datos <- read_csv(path)
+```
+
+# Exploración inicial
+
+Se realiza una exploración inicial para conocer la estructura, dimensiones y tipos de variables del dataset
+
+### Vista general de la estructura del dataset
+
+```{r}
+glimpse(datos)
+```
+
+## Primeras filas
+```{r}
+datos %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = TRUE)
+```
+
+
+# Limpieza de nombres de columnas y verificación de estructura
+
+## Nombres de columnas y limpieza minima
+
+```{r}
+df <- datos
+df_clean <- datos %>% janitor::clean_names()
+
+names(df)
+
+```
+
+```{r}
+names(df_clean)
+```
+
+## Dimensiones y estructura
+```{r}
+cat("filas: ", nrow(df_clean), "\n")
+```
+```{r}
+cat("columnas: ", ncol(df_clean), "\n")
+```
+
+## Distribuciones principales
+
+Resumen estadístico de todas las variables
+ 
+```{r}
+summary(df_clean)
+```
+
+## Tipos de variables
+
+Se identifican los tipos de cada variable para determinar cuales requieren conversión a factor
+
+```{r}
+type_table <- tibble(
+  variable = names(df_clean),
+  clase = map_chr(df_clean, ~ paste(class(.x), collapse = ", "))
+)
+
+
+type_table %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+## Valores faltantes
+
+Se verifica si existen datos incompletos en alguna variable
+
+```{r}
+na_by_var <- df_clean %>%
+  summarise(across(everything(), ~ sum(is.na(.x)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "na_count") %>%
+  arrange(desc(na_count))
+
+na_by_var %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+
+## Consulta de Duplicados
+
+Verificación de filas duplicadas
+
+```{r}
+cat("Filas duplicadas exactas:", sum(duplicated(df_clean)), "\n")
+```
+
+# Conversión de datos (se indica cuales son categóricas)
+
+Las variables que representan categorías se convierten a factor para que los modelos las traten correctamente
+
+```{r}
+
+df_clean$dteday <- as.factor(df_clean$dteday)
+df_clean$weekday <- as.factor(df_clean$weekday)
+df_clean$dteday <- as.factor(df_clean$dteday)
+df_clean$season <- as.factor(df_clean$season)
+df_clean$weathersit <- as.factor(df_clean$weathersit)
+df_clean$yr <- as.factor(df_clean$yr)
+
+library(caret) 
+```
+
+Escalado de variables numéricas (centrado y normalización)
+
+```{r}
+pre <-preProcess(df_clean[,1:16], method = c("center", "scale"))
+data_scaled <- predict(pre, df_clean)
+```
+
+
+
+# Análisis de Outliers
+
+Se identifican valores extremos en las variables numéricas principales mediante gráficos de caja (boxplot)
+
+## Outliers en temperatura
+
+```{r}
+ggplot(df_clean, aes(y = temp)) +
+  geom_boxplot() +
+  labs(title = "Outliers en temperatura")
+```
+
+## Outliers en hum
+
+```{r}
+ggplot(df_clean, aes(y = hum)) +
+  geom_boxplot() +
+  labs(title = "Outliers en hum")
+```
+
+## Outliers en windspeed
+
+```{r}
+ggplot(df_clean, aes(y = windspeed)) +
+  geom_boxplot() +
+  labs(title = "Outliers en windspeed")
+```
+
+## Outliers en cnt
+
+```{r}
+ggplot(df_clean, aes(y = cnt)) +
+  geom_boxplot() +
+  labs(title = "Outliers en cnt")
+```
+
+# Patrones temporales
+
+## Demanda por mes
+
+```{r}
+ggplot(df_clean, aes(x = factor(mnth), y = cnt)) +
+  geom_boxplot() +
+  labs(
+    title = "Demanda de bicicletas por mes",
+    x = "Mes",
+    y = "Cantidad de alquileres"
+  )
+```
+
+## Demanda según tipo de día
+
+```{r}
+ggplot(df_clean, aes(x = factor(workingday), y = cnt)) +
+  geom_boxplot() +
+  labs(
+    title = "Demanda en dias laborales vs no laborales",
+    x = "Tipo de dia",
+    y = "Cantidad de alquileres"
+  )
+```
+
+## Dispersión temperatura vs demanda
+
+```{r}
+ggplot(df_clean, aes(x = temp, y = cnt)) +
+  geom_point(alpha = 0.5) +
+  labs(
+    title = "Relacion entre temperatura y demanda",
+    x = "Temperatura",
+    y = "Cantidad de alquileres"
+  )
+```
+
+# Division Entrenamiento/Prueba
+
+- Se divide el dataset en 70% para entrenamiento y 30% para prueba.
+
+- La partición es estratificada sobre la variable objetivo cnt para garantizar una distribución similar en ambos conjuntos.
+
+```{r}
+set.seed(123)
+
+trainIndex <- createDataPartition(df_clean$cnt, p = .7, list = FALSE)
+train <- df_clean[trainIndex, ]
+test  <- df_clean[-trainIndex, ]
+
+cat("Filas en entrenamiento:", nrow(train), "\n")
+cat("Filas en prueba:", nrow(test), "\n")
+
+
+ctrl <- trainControl(
+  method  = "cv",
+  number  = 10,
+  savePredictions = TRUE
+)
+```
+
+# Ajuste de Modelo
+
+## Regresión Lineal
+
+```{r}
+
+modelo_linear <- train(
+  cnt ~ season + yr + mnth + holiday + weekday +
+        workingday + weathersit + temp + atemp +
+        hum + windspeed,
+  data      = train,
+  method    = "lm",
+  trControl = ctrl
+)
+
+summary(modelo_linear$finalModel)
+
+pred_lm <- predict(modelo_linear, test)
+RMSE_lm <- sqrt(mean((test$cnt - pred_lm)^2))
+MAE_lm  <- mean(abs(test$cnt - pred_lm))
+R2_lm   <- cor(test$cnt, pred_lm)^2
+
+cat("--- Regresión Lineal ---\n")
+cat("RMSE:", round(RMSE_lm, 2), "\n")
+cat("MAE: ", round(MAE_lm,  2), "\n")
+cat("R²:  ", round(R2_lm,   4), "\n\n")
+```
+
+La regresión lineal obtuvo un R² de 0.8286, lo que indica que explica aproximadamente el 83% de la variabilidad en la demanda. Sin embargo, 
+su RMSE de 805.29 refleja que el modelo comete errores promedio considerables, posiblemente porque asume relaciones lineales entre las 
+variables predictoras y la demanda, lo cual no siempre se cumple.
+
+Variables como yr1 (año) y weathersit3 (lluvia intensa) resultaron altamente significativas (p < 0.001), mientras que temp y atemp no 
+alcanzaron significancia individual, posiblemente por la alta correlación entre ambas.
+
+
+## Árbol de decisión
+
+```{r}
+modelo_arbol <- train(
+  cnt ~ season + yr + mnth + holiday + weekday +
+        workingday + weathersit + temp + atemp +
+        hum + windspeed,
+  data = train,
+  method = "rpart",
+  trControl = ctrl
+)
+
+
+pred_arbol <- predict(modelo_arbol, test)
+RMSE_arbol <- sqrt(mean((test$cnt - pred_arbol)^2))
+MAE_arbol  <- mean(abs(test$cnt - pred_arbol))
+R2_arbol   <- cor(test$cnt, pred_arbol)^2
+
+library(rpart.plot)
+rpart.plot(modelo_arbol$finalModel,
+           main   = "Árbol de Decisión - Demanda de Bicicletas",
+           type   = 4,
+           extra  = 101,
+           fallen.leaves = TRUE)
+
+cat("--- Árbol de Decisión ---\n")
+cat("RMSE:", round(RMSE_arbol, 2), "\n")
+cat("MAE: ", round(MAE_arbol,  2), "\n")
+cat("R²:  ", round(R2_arbol,   4), "\n\n")
+```
+
+El Árbol de decisión muestra el desempeño más bajo de los tres modelos, con un R² de 0.5529 y un RMSE de 1304.22. Esto indica que el modelo 
+captura menos de la mitad de la variabilidad real de la demanda. La estructura del árbol revela que la temperatura (temp < 0.43) es 
+la primera variable de división, seguida por el año (yr), lo que coincide con los hallazgos del análisis exploratorio. El bajo desempeño 
+se atribuye al sobreajuste sobre el conjunto de entrenamiento, limitando su capacidad de generalización sobre datos nuevos.
+
+
+## Random Forest
+
+```{r}
+modelo_rf <- train(
+  cnt ~ season + yr + mnth + holiday + weekday +
+        workingday + weathersit + temp + atemp +
+        hum + windspeed,
+  data = train,
+  method = "rf",
+  trControl = ctrl,
+  importance = TRUE
+)
+
+pred_rf <- predict(modelo_rf, test)
+RMSE_rf <- sqrt(mean((test$cnt - pred_rf)^2))
+MAE_rf  <- mean(abs(test$cnt - pred_rf))
+R2_rf   <- cor(test$cnt, pred_rf)^2
+
+cat("--- Random Forest ---\n")
+cat("RMSE:", round(RMSE_rf, 2), "\n")
+cat("MAE: ", round(MAE_rf,  2), "\n")
+cat("R²:  ", round(R2_rf,   4), "\n\n")
+```
+
+El Random Forest obtuvo el mejor desempeño con un R² de 0.8735 y un RMSE de 696.57, superando a los modelos anteriores en todas las métricas. 
+Un error absoluto promedio de 498 alquileres representa aproximadamente un 11% de la demanda media del sistema (4,504 alquileres), lo cual es 
+aceptable dada la alta variabilidad inherente de los datos. La mejora respecto a la regresión lineal se explica por la capacidad del modelo 
+para capturar relaciones no lineales y efectos de interacción entre variables sin necesidad de especificarlos manualmente.
+
+
+# Gráficos de predicción vs valores reales
+
+## Valores reales vs predichos
+
+Este gráfico permite evaluar visualmente que tan cerca están las predicciones del modelo respecto a los valores reales. La línea roja punteada representa la predicción perfecta (pred = real)
+
+```{r}
+
+ggplot(data.frame(real = test$cnt, pred = pred_rf), 
+       aes(x = real, y = pred)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_abline(slope = 1, intercept = 0, 
+              color = "red", linetype = "dashed") +
+  labs(
+    title = "Valores Reales vs Predichos - Random Forest",
+    x = "Valores Reales (cnt)",
+    y = "Valores Predichos (cnt)"
+  ) +
+  theme_minimal()
+```
+
+### Interpretación
+
+La mayoría de los puntos se distribuyen cercanos a la línea de referencia, lo que confirma la capacidad predictiva del modelo. Se observa una ligera 
+tendencia a sobreestimar en valores bajos (entre 1,000 y 2,500 alquileres) y a subestimar en valores muy altos (superiores a 7,000 alquileres), 
+comportamiento esperado en Random Forest dado que el promedio de múltiples árboles tiende a moderar los valores extremos.
+
+## Serie temporal de predicciones
+
+Este gráfico muestra el comportamiento de la demanda real y predicha a lo largo de las 216 observaciones del conjunto de prueba. Permite identificar si el modelo captura correctamente los patrones estacionales y los picos de demanda.
+
+```{r}
+ggplot(data.frame(
+    idx  = 1:nrow(test),
+    real = test$cnt,
+    pred = pred_rf)) +
+  geom_line(aes(x = idx, y = real, color = "Real"), 
+            alpha = 0.6) +
+  geom_point(aes(x = idx, y = real, color = "Real"), 
+             alpha = 0.6, size = 1.5) +
+  geom_line(aes(x = idx, y = pred, color = "Predicho"), 
+            linetype = "dashed", alpha = 0.8) +
+  scale_color_manual(values = c("Real" = "gray40",
+                                "Predicho" = "steelblue")) +
+  labs(
+    title = "Demanda Real vs Predicha - Conjunto de Prueba",
+    x = "Observación",
+    y = "Cantidad de alquileres (cnt)",
+    color = "Serie"
+  ) +
+  theme_minimal()
+```
+
+Interpretación
+
+La serie temporal evidencia que el modelo sigue adecuadamente la tendencia general de la demanda. 
+
+Se aprecia el patrón estacional: la demanda crece progresivamente hacia las observaciones centrales, correspondientes a los meses de mayor temperatura, y desciende hacia el final de la serie. En los picos mas pronunciados, especialmente entre las observaciones 150 y 200, se observan algunas diferencias donde el modelo no captura completamente la magnitud de la demanda real, lo cual es coherente con el MAE de 498 alquileres reportado.
+
+
+# Comparación de modelos
+
+Se construye una tabla comparativa con las métricas obtenidas por cada modelo sobre el conjunto de prueba independiente
+
+```{r}
+comparacion <- data.frame(
+  Modelo = c("Regresión Lineal", "Árbol de Decisión", "Random Forest"),
+  RMSE   = round(c(RMSE_lm, RMSE_arbol, RMSE_rf), 2),
+  MAE    = round(c(MAE_lm,  MAE_arbol,  MAE_rf),  2),
+  R2     = round(c(R2_lm,   R2_arbol,   R2_rf),   4)
+)
+
+comparacion %>%
+  arrange(RMSE) %>%
+  kable(caption = "Comparación de modelos supervisados") %>%
+  kable_styling(full_width = FALSE) %>%
+  row_spec(1, bold = TRUE, color = "white", background = "#2e7d32")
+
+
+
+```
+
+El Random Forest supera a los otros dos modelos en todas las métricas evaluadas. Reduce el RMSE en un 13.5% respecto a la regresión lineal y en un 46.6% respecto al árbol de decisión. Esta mejora consistente confirma que la selección del Random Forest como modelo final es técnicamente justificada.
+
+
+## Mejor modelo:
+
+**Random Forest**
+
+- **RMSE**: 696.57 | **MAE**: 498.13 | **R²**: 0.8735
+
+- Explica el 87.35% de la variabilidad en la demanda de bicicletas.
+
+- Supera a los otros modelos porque combina múltiples árboles de decisión, reduce el sobreajuste mediante bagging y captura relaciones no lineales entre las variables sin necesidad de especificarlas manualmente.
+
+
+# Importancia de las variables
+
+Se analiza la contribución relativa de cada variable predictora dentro del modelo Random Forest
+
+```{r}
+importancia <- varImp(modelo_rf)
+
+plot(importancia,
+     main = "Importancia de variables - Random Forest",
+     top  = 10)
+```
+
+
+**Según Random Forest:**
+
+- **yr1 (100):** El año es la variable más importante. Refleja el crecimiento tendencial del servicio entre 2011 y 2012. Es importante considerar que esta variable tiene limitaciones como predictor futuro ya que no es generalizable más allá del periodo observado.
+
+- **hum (27):** La humedad es el segundo factor más influyente. A mayor humedad, menor demanda, dado que se asocia con lluvia o incomodidad que reduce la disposición de los usuarios a utilizar el servicio.
+
+- **temp y mnth (~20):** La temperatura y el mes del año tienen peso similar, confirmando el patrón estacional observado en el EDA.
+
+- **atemp, season4, windspeed:** importancia moderada, contribuyen a mejorar la precisión general del modelo.
+
+- **weathersit, weekday:** menor impacto relativo pero presentes, capturan el efecto del clima adverso y el tipo de día sobre la demanda.
+
+
+# Conclusiones
+
+El presente análisis permitió desarrollar un modelo predictivo de demanda para un sistema de bicicletas compartidas utilizando tres algoritmos supervisados. El modelo Random Forest fue seleccionado como modelo final al obtener el mejor desempeño con un R² de 0.8735, un RMSE de 696.57y un MAE de 498.13, explicando el 87.35% de la variabilidad en la demanda diaria del sistema.
+
+Entre los hallazgos más relevantes se identificó que el crecimiento tendencial del servicio (yr), la humedad (hum), la temperatura (temp, atemp) y la estacionalidad mensual (mnth) son los factores de mayor peso predictivo. Esto confirma que las condiciones climáticas y los patrones temporales son  determinantes clave en el comportamiento de la demanda.
+
+
+# Recomendaciones
+
+Con base en los resultados obtenidos se plantean las siguientes recomendaciones operativas:
+
+- **Gestión estacional:** aprovechar los meses de baja demanda (noviembre a febrero) para realizar mantenimiento preventivo de las unidades disponibles sin afectar el nivel de servicio.
+
+- **Clima adverso:** implementar estrategias de incentivo como descuentos automáticos o puntos de fidelidad en días con alta humedad o lluvia, dado que estas condiciones reducen significativamente la demanda.
+
+- **Fines de semana:** realizar una redistribución estratégica de las unidades disponibles los viernes por la noche hacia zonas recreativas, turísticas y parques, para atender el perfil de usuario recreativo que predomina en días no laborales.
+
+- **Crecimiento del servicio:** dado el crecimiento tendencial observado entre 2011 y 2012, se recomienda planificar la ampliación gradual de unidades disponibles para evitar problemas de escasez ante el aumento sostenido de usuarios.
+
+- **Mejora del modelo:** para una implementación futura se recomienda incorporar variables que capturen el crecimiento del servicio de forma continua, como el número acumulado de usuarios registrados, dado que la variable yr no es generalizable más allá del periodo observado.

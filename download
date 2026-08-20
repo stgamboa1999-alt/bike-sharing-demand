@@ -1,0 +1,13 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Output renderizado (opcional: descomentar si no querés versionar el HTML)
+# *.html
+
+# OS
+.DS_Store
+Thumbs.db
